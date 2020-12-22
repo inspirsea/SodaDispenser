@@ -1,4 +1,5 @@
 #include <SPI.h>
+#include <EEPROM.h>
 #include "PN532.h"
 #include "PN532_SPI.h"
 
@@ -19,6 +20,10 @@ void setup(void) {
     Serial.println("Start");
     pn532->begin();
     pn532->SAMConfig();
+
+    pinMode(PRICE1RELAYPIN, OUTPUT);
+    pinMode(PRICE1SENSEPIN, INPUT_PULLUP);
+
 }
  
 void loop(void) {
@@ -28,5 +33,19 @@ void loop(void) {
     if(pn532->readPassiveTargetID(PN532_MIFARE_ISO14443A, uid, (uint8_t*)&uidLength, 5000)){
       PN532::PrintHex(uid, uidLength);
     }
+
+
+    uint16_t addr=123;
+    EEPROM.write(addr, 123);
+    for(addr=0; addr<1024; addr++){
+      uint8_t value = EEPROM.read(addr);
+    }
+    
+//    digitalWrite(PRICE1RELAYPIN, HIGH);
+
+
+//    if(digitalRead(PRICE1SENSEPIN) == HIGH){
+//      // do stuff      
+//    }
 
 }
