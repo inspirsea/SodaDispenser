@@ -1,7 +1,9 @@
 #include <SPI.h>
 #include <EEPROM.h>
+#include <Wire.h> 
 #include "PN532.h"
 #include "PN532_SPI.h"
+#include "LiquidCrystal_I2C.h"
 
 #define PRICE1RELAYPIN 7
 #define PRICE2RELAYPIN 6
@@ -14,6 +16,7 @@
 
 PN532_SPI pn532spi(SPI, 10);
 PN532* pn532 = new PN532(pn532spi);
+LiquidCrystal_I2C lcd(0x27,16,2);  // set the LCD address to 0x27 for a 16 chars and 2 line display
 
 void setup(void) {
     Serial.begin(57600);
@@ -24,6 +27,12 @@ void setup(void) {
     pinMode(PRICE1RELAYPIN, OUTPUT);
     pinMode(PRICE1SENSEPIN, INPUT_PULLUP);
 
+
+    lcd.init();                      // initialize the lcd 
+
+    lcd.backlight();
+    lcd.setCursor(3,0);
+    lcd.print("Hello, world!");
 }
  
 void loop(void) {
