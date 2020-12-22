@@ -18,6 +18,7 @@ void setup(void) {
     Serial.begin(57600);
     Serial.println("Start");
     pn532->begin();
+    pn532->SAMConfig();
 }
  
 void loop(void) {
