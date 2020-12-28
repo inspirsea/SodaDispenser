@@ -1,5 +1,9 @@
 void addCard(char value[]) {
   uint8_t currAddr = EEPROM.read(0);
+  if (currAddr > 254) {
+    currAddr = 1;
+  }
+
   int addr = currAddr * 4;
   Serial.println(currAddr);
 
@@ -18,13 +22,13 @@ bool getCard(char value[]) {
 
   bool result = false;
 
-  for(int i = 4; i <= addr * 4; i = i + 4) {
-    if(value[0] - 0 == EEPROM.read(i) && value[1] - 0 == EEPROM.read(i + 1) && value[2] - 0 == EEPROM.read(i + 2) && value[3] - 0 == EEPROM.read(i + 3)) {
+  for (int i = 4; i <= addr * 4; i = i + 4) {
+    if (value[0] - 0 == EEPROM.read(i) && value[1] - 0 == EEPROM.read(i + 1) && value[2] - 0 == EEPROM.read(i + 2) && value[3] - 0 == EEPROM.read(i + 3)) {
       result = true;
-      break;  
+      break;
     }
   }
 
   return result;
-  
+
 }
