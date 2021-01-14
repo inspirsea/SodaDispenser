@@ -1,3 +1,27 @@
+/**
+ * SodaDispenser controller
+ * ------------------------
+ * 
+ * Arduino pin usage
+ * -----------------
+ *  
+ * D3  block sense, PCINT19 input internal pullup (from optocoupler)
+ * D4  price 2 sense, PCINT20 input internal pullup (from optocoupler)
+ * D5  price 1 sense, PCINT21 input internal pullup (from optocoupler)
+ * D6  price 2 relay, output
+ * D7  price 1 relay, output
+ * 
+ * D9  RST MFRC522
+ * D10 SS MFRC522
+ * D11 MOSI MFRC522
+ * D12 MISO MFRC522
+ * D13 SCK MFRC522
+ * 
+ * A4 LCD SDA
+ * A5 LCD SCL
+ * 
+ */
+
 #include <SPI.h>
 #include "deprecated.h"
 #include "MFRC522.h"
@@ -30,13 +54,95 @@ uint8_t adminCard[4] = {177, 177, 177, 177};
 uint8_t clearCommand[4] = {173, 227, 236, 242};
 uint8_t listCommand[4] = {173, 236, 243, 244};
 
+
+typedef enum vendstate {
+  VS_INIT = 0, 
+  VS_CARD,
+  VS_ADMIN,
+  VS_BUTTON,
+  VS_VEND,
+  VS_CHECK_BLOCK,
+  VS_NOP,
+} vendstate_t;
+
+
+void vend_fsm(){
+  static unsigned long prev_millis = millis();
+  static unsigned int timeout=0;
+  static vendstate_t state = VS_INIT;
+  unsigned long int tdiff = millis() - prev_millis;
+  
+  if(tdiff){
+    timeout = (timeout > tdiff) ? (timeout - tdiff) : 0;
+    state = (state <= VS_CARD || timeout) ? state : VS_INIT;
+  }
+
+  switch(state) {
+    case VS_INIT:
+      // LCD clear and backlight off;
+      // Turn off relays
+      state = VS_CARD;
+      break;
+    case VS_CARD:
+      if(tdiff /* && card */) {
+        // read & validate card
+        timeout = 10000;
+        state = VS_BUTTON; // or VS_ADMIN if admin card, else VS_NOP (and put LCD error)
+      }
+      break;
+    case VS_ADMIN:
+      // Check if another card can be read.
+      // If so, add card and state = VS_INIT;
+      // fall-through
+    case VS_BUTTON:
+      // Check Block 
+      if(digitalRead(PRICE1SENSEPIN) == LOW){
+        digitalWrite(PRICE1RELAYPIN, HIGH);
+        timeout = 200;
+        // LCD put stuff
+        state = VS_VEND;
+      }
+      else if(digitalRead(PRICE2SENSEPIN) == LOW){
+        digitalWrite(PRICE2RELAYPIN, HIGH);
+        timeout = 200;
+        // LCD put stuff
+        state = VS_VEND;
+      }
+      break;
+    case VS_VEND:
+      if(timeout < 150){
+        digitalWrite(PRICE1RELAYPIN, LOW);
+        digitalWrite(PRICE2RELAYPIN, LOW);
+        state = VS_CHECK_BLOCK;
+      }
+      break;
+    case VS_CHECK_BLOCK:
+      if(digitalRead(BLOCKSENSEPIN) == LOW){
+        timeout = 5000;
+        // LCD put ok
+        state = VS_NOP;
+      }
+      break;
+    case VS_NOP:
+      // do nothing (until timeout)
+      break;
+    
+  }
+  
+  prev_millis += tdiff;
+}
+
+
 void setup(void) {
   Serial.begin(57600);
   Serial.println("Start");
 
   // Init vending pins
   pinMode(PRICE1RELAYPIN, OUTPUT);
+  pinMode(PRICE2RELAYPIN, OUTPUT);
   pinMode(PRICE1SENSEPIN, INPUT_PULLUP);
+  pinMode(PRICE2SENSEPIN, INPUT_PULLUP);
+  pinMode(BLOCKSENSEPIN, INPUT_PULLUP);
 
   // Init RFID
   SPI.begin();
@@ -49,6 +155,14 @@ void setup(void) {
   lcd.setCursor(3, 0);
   lcd.print("Hello, world!");
 }
+
+/*
+void loop(){
+	vend_fsm();
+	handleInput();
+	// do more stuff?
+}
+*/
 
 void loop(void) {
   uint8_t uid[7];
